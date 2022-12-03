@@ -1,0 +1,25 @@
+{
+  "name": "bicycle_rent_service",
+  "version": "1.0.0",
+  "description": "backend for bicycle renting service",
+  "main": "gateway.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/s4j4d/bicycle-rental-service.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/s4j4d/bicycle-rental-service/issues"
+  },
+  "homepage": "https://github.com/s4j4d/bicycle-rental-service#readme",
+  "dependencies": {
+    "amqplib": "^0.10.3",
+    "dotenv": "^16.0.3",
+    "redis": "^4.5.1"
+  }
+}

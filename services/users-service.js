@@ -12,7 +12,7 @@ redis.on('connect',()=>{
     await redis.connect()
     const connection = await amqplib.connect()
     const channel = await connection.createChannel()
-    const exchange = await channel.assertExchange(process.env.EXCHNAGE_NAME , process.env.EXCHNAGE_TYPE)
+    const exchange = await channel.assertExchange(process.env.EXCHANGE_NAME , process.env.EXCHANGE_TYPE)
     const user_queue = await channel.assertQueue('users-service' , {durable:true})
     const routingKeys = ['register' , 'login']
     for(const item of routingKeys)
