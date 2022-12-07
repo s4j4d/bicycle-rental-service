@@ -7,7 +7,7 @@ const amqplib = require('amqplib');
     const option = input.splice(0,1)[0]
     const requestInfo = input.slice(2)
     const usernamePassword = input.slice(0,2)
-    const routingKeysForPublish = ['register' , 'login', 'bike-request','error','logger' , 'bikes-list']
+    const routingKeysForPublish = ['register' , 'login', 'bike-request','error','successful-request-log' , 'bikes-list' , 'register-answer-log']
     const routingKeys = ['register-answer' , 'login-answer' , 'bikes-list-answer' , 'bike-request-answer']
     const correlationId = generateUuid()
 
@@ -26,8 +26,7 @@ const amqplib = require('amqplib');
             correlationId:correlationId , 
             persistent:true
         })
-    }else{
-        if(option ==='register'){
+    }else if(option ==='register'){
             channel.publish(exchange.exchange , routingKeysForPublish[0] , Buffer.from(JSON.stringify(usernamePassword)),{
                 correlationId:correlationId , 
                 persistent:true
@@ -38,12 +37,23 @@ const amqplib = require('amqplib');
                 correlationId:correlationId , 
                 persistent:true
             })
-        }
+    }else{
+        console.log('commands to use the app : ');
+        console.log('[option][username][password][bike type , number]');
+        console.log('option : '+'bike-request , bikes-list , register');
+        setTimeout(()=>{
+            connection.close()
+            process.exit(0)
+        },1000)
     }
     channel.consume(gateway_queue.queue,async (msg)=>{
         if(msg.content){
             if(msg.fields.routingKey === 'register-answer'){
                 console.log(msg.content.toString());
+                channel.publish(exchange.exchange , routingKeysForPublish[6] , Buffer.from(JSON.stringify(usernamePassword[0])),{
+                    correlationId:correlationId , 
+                    persistent:true
+                })
             }
             else if(msg.fields.routingKey === 'login-answer'){
                 if(JSON.parse(msg.content)){
@@ -52,6 +62,8 @@ const amqplib = require('amqplib');
                         correlationId:correlationId , 
                         persistent:true
                     })
+                }else{
+                    console.log('login failed , try again');
                 }
                 
             }
@@ -65,8 +77,7 @@ const amqplib = require('amqplib');
                     persistent:true
                 })
             }
-            else{
-               console.log(msg.fields.routingKey);                 
+            else{               
                console.log('There is an error');
             }
         }

@@ -26,7 +26,8 @@ redis.on('connect',()=>{
             const key = msg.fields.routingKey
             const bicyclesList = await redis.hGetAll(redis_hash_bicycles_list)
             if(key === 'bikes-list'){
-                console.log('message content : ' ,msg.content.toString());
+                console.log('request content : ' ,msg.content.toString());
+                console.log(bicyclesList);
                 channel.publish(exchange.exchange,'bikes-list-answer',Buffer.from(JSON.stringify(bicyclesList)) ,
                  {correlationId:msg.properties.correlationId})
             }else{
@@ -34,8 +35,8 @@ redis.on('connect',()=>{
                 const result = []
                     //check to see if the requested numbers of bicycles exists or we should deny it
                 content.forEach(element => {
-                    const [bikeKind , number] = element.split(',');
-                    if(bicyclesList[bikeKind]>= number){
+                    const [bikeType , number] = element.split(',');
+                    if(Number(bicyclesList[bikeType])>= number){
                         result.push(true)
                     }else{
                         result.push(false)
@@ -46,14 +47,13 @@ redis.on('connect',()=>{
                     channel.publish(exchange.exchange,'bike-request-answer',Buffer.from('request accepted and done') ,
                  {correlationId:msg.properties.correlationId})
                     console.log('request done ...');
-
+                    console.log('request content : ');
                     // writing chnages into the redis db
 
                  content.forEach(async element => {
-                    const [bikeKind , number] = element.split(',');
-                    console.log(bikeKind);
-                    console.log(number);
-                    await redis.hSet(redis_hash_bicycles_list , bikeKind , number )
+                    const [bikeType , number] = element.split(',');
+                    console.log(' ',element);
+                    await redis.hSet(redis_hash_bicycles_list , bikeType , number )
                 });
                     
                 }else{

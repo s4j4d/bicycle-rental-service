@@ -25,9 +25,12 @@ redis.on('connect',()=>{
             console.log(JSON.parse(msg.content));
             const key = msg.fields.routingKey
         if(content){
+
             if(key === 'register'){
                 await redis.set(content[0] , content[1])
                 console.log('register done !');
+                channel.publish(exchange.exchange,'register-answer',Buffer.from('register done.') , {correlationId:msg.properties.correlationId})
+
             }else{
                 const content = JSON.parse(msg.content)
                 const password = await redis.get(content[0])
