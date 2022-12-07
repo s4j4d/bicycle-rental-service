@@ -1,28 +1,28 @@
 require('dotenv').config();
 const amqplib = require('amqplib');
-const rabbitConnection = require('./utils');
 
 (async()=>{
     try{
     const input = process.argv.slice(2)
-    const option = input[0]
-    const usernamePassword = input.slice(1,3)
-    const routingKeysForPublish = ['register' , 'login', 'bike-request','error','logger' , 'bicycles-list']
-    const routingKeys = ['register-answer' , 'login-answer']
+    const option = input.splice(0,1)[0]
+    const requestInfo = input.slice(2)
+    const usernamePassword = input.slice(0,2)
+    const routingKeysForPublish = ['register' , 'login', 'bike-request','error','logger' , 'bikes-list']
+    const routingKeys = ['register-answer' , 'login-answer' , 'bikes-list-answer' , 'bike-request-answer']
     const correlationId = generateUuid()
 
     
 
-    console.log('service running ....');
     const connection = await amqplib.connect()
     const channel = await connection.createChannel()
     const exchange = await channel.assertExchange(process.env.EXCHANGE_NAME , process.env.EXCHANGE_TYPE)
-    const user_queue = await channel.assertQueue(queueName , {durable:true})
+    const gateway_queue = await channel.assertQueue('gateway' , {durable:true})
     for(const item of routingKeys)
-        await channel.bindQueue(user_queue.queue , exchange.exchange , item)
+        await channel.bindQueue(gateway_queue.queue , exchange.exchange , item)
 
-    if(option === 'bicycles-list'){
-        channel.publish(exchange.exchange , routingKeysForPublish[5] ,{
+    if(option === 'bikes-list'){
+        console.log('bikes-list: ');
+        channel.publish(exchange.exchange , routingKeysForPublish[5], Buffer.from('bikes-list'),{
             correlationId:correlationId , 
             persistent:true
         })
@@ -33,47 +33,55 @@ const rabbitConnection = require('./utils');
                 persistent:true
             })
         }
-        else{
+        else if(option === 'bike-request'){
             channel.publish(exchange.exchange , routingKeysForPublish[1] , Buffer.from(JSON.stringify(usernamePassword)),{
                 correlationId:correlationId , 
                 persistent:true
             })
         }
     }
-    channel.consume(user_queue.queue,async (msg)=>{
+    channel.consume(gateway_queue.queue,async (msg)=>{
         if(msg.content){
             if(msg.fields.routingKey === 'register-answer'){
                 console.log(msg.content.toString());
             }
             else if(msg.fields.routingKey === 'login-answer'){
-                const content = JSON.parse(msg.content)
-                if(content){
-                    channel.publish(exchange.exchange , routingKeysForPublish[1] , Buffer.from(JSON.stringify(usernamePassword)),{
+                if(JSON.parse(msg.content)){
+                    console.log('login done ...');
+                    channel.publish(exchange.exchange , routingKeysForPublish[2] , Buffer.from(JSON.stringify(requestInfo)),{
                         correlationId:correlationId , 
                         persistent:true
                     })
                 }
-                else if(msg.fields.routingKey === 'bicycles-list'){
-                    console.log(content);
-
-                }else{
-                    console.log('not authorized');
-                }
+                
             }
-            else{}
+            else if(msg.fields.routingKey === 'bikes-list-answer'){
+                console.log(JSON.parse(msg.content));
+
+            }else if (msg.fields.routingKey === 'bike-request-answer'){
+                console.log(msg.content.toString());
+                channel.publish(exchange.exchange , routingKeysForPublish[4] , Buffer.from(JSON.stringify(requestInfo.slice(0,1).concat(requestInfo.slice(2)))),{
+                    correlationId:correlationId , 
+                    persistent:true
+                })
+            }
+            else{
+               console.log(msg.fields.routingKey);                 
+               console.log('There is an error');
+            }
         }
 
-setTimeout(()=>{
-    connection.close()
-    process.exit(0)
-},1000)
-    },{noAck:true})
+    setTimeout(()=>{
+        connection.close()
+        process.exit(0)
+    },1000)
+        },{noAck:true})
 
 
-}catch(error){
-    console.log(error.message);
-}
-})()
+    }catch(error){
+        console.log(error.message);
+    }
+    })()
 
 
 
